@@ -2,8 +2,9 @@
 
 A single Python function, `calculate_reward`, written as an answer to a
 coding-task question ("Task 2: Reward Distribution, Q3"). It splits a
-fixed stream of USDT rewards between users of a lending protocol in
-proportion to the shares each user holds over a one-hour window.
+stream of USDT rewards between users of a lending protocol in
+proportion to the shares each user holds, for the task's window of
+t=0 to t=3600.
 
 There is no blockchain code here. "Web3" refers to the scenario in the
 task, not to anything the code connects to.
@@ -13,7 +14,7 @@ task, not to anything the code connects to.
 | File | What it is |
 | --- | --- |
 | `index.py` | `calculate_reward(events)` plus four example calls that print their results |
-| `sweep.yaml`, `.github/ISSUE_TEMPLATE/sweep-template.yml` | Config for the Sweep AI bot, added by a bot PR; not used by the code |
+| `sweep.yaml`, `.github/ISSUE_TEMPLATE/sweep-template.yml` | Config for the Sweep AI GitHub app; not used by the code. `sweep-ai[bot]` committed both on the `sweep/add-sweep-config` branch in January 2024; they reached `main` when PR #1 was merged in December 2025 |
 | `LICENSE` | GNU General Public License v3.0 |
 
 ## How it works
@@ -26,6 +27,9 @@ tuples and returns a dict of `{user: reward}`:
    between users in proportion to their current shares.
 3. The event's share change is then applied to that user.
 4. Totals are rounded to 3 decimal places.
+
+The window is not enforced. The end marker only adds one more interval;
+timestamps are not checked against 0 or 3600.
 
 ## Run it
 
@@ -62,40 +66,49 @@ task statement below:
   follows the event list.
 - Shares are not clamped at zero. Removing more shares than a user holds
   gives that user negative shares.
+- Events outside 0 to 3600 still earn rewards. An event at t=7200 makes
+  the last interval run past 3600 (`[("A", 0, 1), ("A", 7200, 0)]` pays
+  A 20,001.6), and an event before t=0 earns from its own timestamp
+  (`[("A", -100, 1)]` pays A 10,278.6).
 - There is no automated test suite. A `unittest` file was added and later
   removed in the commit history; `index.py` only prints example results.
 
 ## The task
 
-The question this code answers, from the original README (lightly
-edited for formatting):
+The question this code answers, from the original README. The wording
+is unchanged; only the layout was converted to Markdown.
 
-> Write a Python3 code that calculates how much each user should receive
-> the reward. Please include any test cases to test the functionality,
-> including normal and edge cases as well.
+> **Task 2 – Reward Distribution**
+>
+> **Q3: Write a Python3 code that calculates how much each user should receive the reward.**
+> Please include any test cases to test the functionality, including normal and edge cases
+> as well.
 >
 > Implement the Python function according to the format below:
 >
 > ```python
 > def calculate_reward(events: list[tuple[str,int]]) -> dict[str, float]:
->     raise NotImplemented()
+> raise NotImplemented()
 > ```
 >
-> Problem statement: We have 10,000 USDT to be distributed to our users
-> who use our lending protocol during the timestamp 0 to 3600 (1 hour
-> duration). The reward distribution algorithm is such that the 1000
-> tokens are distributed at the rate of ~2.778 USDT / sec, where at each
-> point in time, the tokens will be distributed proportionally based on
-> the total number of user's shares.
+> TODO
 >
-> Each user's action can either be:
+> Problem statement:
+> We have 10,000 USDT to be distributed to our users who use our lending protocol during the
+> timestamp 0 to 3600 (1 hour duration). The reward distribution algorithm is such that the 1000
+> tokens are distributed at the rate of ~2.778 USDT / sec, where at each point in time, the tokens
+> will be distributed proportionally based on the total number of user’s shares.
+> Each user’s action can either be:
 >
 > 1. Increase shares by XX, or
-> 2. Decrease shares by YY (user's shares can never be negative)
+> 2. Decrease shares by YY (user’s shares can never be negative)
 >
-> Example: user action events, as a list of tuples of
-> `(user, timestamp, share_adjust)`:
-> `[("A", 0, 2), ("B", 2, 1), ("A", 10, -1)]`
+> Example:
+>
+> - User action events – format will be a list of tuples of (user, timestamp, share_adjust):
+>   - [ (“A”, 0, 2), (“B”, 2, 1), (“A”, 10, -1) ]
+>
+> The above example list of events means that
 >
 > - User A increases 2 shares at time t=0
 > - User B increases 1 share at time t=2
@@ -103,17 +116,16 @@ edited for formatting):
 >
 > So,
 >
-> - Between time t=0 and t=1, only user A is getting the rewards, so A
->   gets 2.778 USDT
-> - Between time t=1 and t=10, A has 2 shares, while B has 1 share, so A
->   gets 2/3 of what's distributed and B gets 1/3: A gets 16.667 USDT and
->   B gets 8.333 USDT
-> - Between time t=10 and t=3600, A and B have 1 share each, so each gets
->   1/2 of what's distributed: 4986.111 USDT each
+> - Between time t=0 & t=1, only user A is getting the rewards → A gets 2.778 USDT
+> - Between time t=1 & t=10, A has 2 shares, while B has 1 share
+>   → A gets 2⁄3 of what’s distributed, and B gets 1⁄3 of what’s distributed
+>   → A gets 16.667 USDT and B gets 8.333 USDT
+> - Between time t=10 & t=3600, A and B has 1 share each
+>   → A gets 1⁄2 of what’s distributed, and B gets 1⁄2 of what’s distributed
+>   → A and B each gets 4986.111 USDT
 >
-> So, in total, A gets 5005.556 USDT and B gets 4994.444 USDT.
->
-> Expected output: `{"A": 5005.556, "B": 4994.444}`
+> So, in total, A gets 5005.556 USDT and B gets 4994.444 USDT
+> Expected Output: a dictionary of {“A” : 5005.556, “B” : 4994.444 }
 
 The signature in the task shows `tuple[str,int]`; the events it
 describes have three fields, which is what `index.py` accepts. The
